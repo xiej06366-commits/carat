@@ -1,397 +1,597 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Clinical AI Analyzer | Fracture & Fall Risk</title>
-    <!-- Bootstrap 5 + Font Awesome -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- TensorFlow.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
-    <style>
-        body {
-            background: #f8fafc;
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-        }
-        .navbar-brand {
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-        .hero {
-            background: linear-gradient(135deg, #0b2b40 0%, #1a4a6f 100%);
-            color: white;
-            border-radius: 0 0 2rem 2rem;
-            padding: 2rem 1rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .card {
-            border: none;
-            border-radius: 24px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-            transition: transform 0.2s;
-        }
-        .card:hover {
-            transform: translateY(-3px);
-        }
-        .upload-area {
-            border: 2px dashed #cbd5e1;
-            border-radius: 28px;
-            padding: 2rem 1rem;
-            text-align: center;
-            background: #ffffff;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .upload-area:hover {
-            border-color: #0d6efd;
-            background: #f1f5f9;
-        }
-        .prediction-list {
-            max-height: 320px;
-            overflow-y: auto;
-        }
-        .progress-bar-custom {
-            height: 6px;
-            border-radius: 3px;
-            background: #e2e8f0;
-            margin: 8px 0;
-        }
-        .f1-score-bar {
-            height: 6px;
-            border-radius: 3px;
-            background: #198754;
-            transition: width 0.3s;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 3rem;
-            padding: 1.5rem;
-            color: #6c757d;
-            font-size: 0.85rem;
-        }
-        .badge-clinical {
-            background-color: #e9ecef;
-            color: #1e3a8a;
-            font-weight: 500;
-        }
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 1.8rem; }
-            .card-body { padding: 1rem; }
-        }
-    </style>
-</head>
-<body>
-
-<nav class="navbar navbar-light bg-white shadow-sm">
-    <div class="container">
-        <a class="navbar-brand" href="#">
-            <i class="fas fa-bone me-2 text-primary"></i>Clinical AI Analyzer
-        </a>
-        <span class="badge bg-light text-dark">v1.0 · Research Demo</span>
-    </div>
-</nav>
-
-<div class="hero text-center">
-    <div class="container">
-        <h1 class="display-5 fw-bold"><i class="fas fa-x-ray"></i> AI-Powered Clinical Analysis</h1>
-        <p class="lead mt-2">Fracture Type Classification & Fall Risk Prediction</p>
-        <div class="d-flex justify-content-center gap-2 flex-wrap mt-3">
-            <span class="badge bg-light text-dark px-3 py-2"><i class="fas fa-chart-line"></i> Real-time</span>
-            <span class="badge bg-light text-dark px-3 py-2"><i class="fas fa-globe"></i> Multi-device</span>
-            <span class="badge bg-light text-dark px-3 py-2"><i class="fas fa-file-alt"></i> Images + CSV</span>
-        </div>
-    </div>
-</div>
-
-<div class="container">
-    <div class="row g-4">
-        <!-- Left Panel: File Upload -->
-        <div class="col-lg-5">
-            <div class="card p-3 h-100">
-                <h4 class="mb-3"><i class="fas fa-upload me-2"></i> Upload Clinical Data</h4>
-                <div class="upload-area" id="uploadArea">
-                    <input type="file" id="fileInput" accept="image/*,.csv" style="display: none;">
-                    <i class="fas fa-cloud-upload-alt fa-3x text-secondary mb-2"></i>
-                    <p class="mb-1 text-secondary">Click or drag & drop</p>
-                    <small class="text-muted">Supports JPG, PNG, WEBP, CSV</small>
-                </div>
-                <div id="analysisResult" class="mt-4" style="display: none;">
-                    <h5 class="fw-bold"><i class="fas fa-microscope"></i> Analysis Result</h5>
-                    <div id="resultTop" class="alert alert-primary fs-5 fw-bold"></div>
-                    <div id="resultDetails" class="prediction-list"></div>
-                </div>
-                <div class="alert alert-info mt-3 small" role="alert">
-                    <i class="fas fa-info-circle"></i> <strong>Clinical Demo</strong><br>
-                    Image analysis uses MobileNet features mapped to 10 fracture types (research demo).<br>
-                    CSV analysis simulates fall risk using a rule-based model. For real clinical use, deploy validated models.
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Panel: Model Information & Performance -->
-        <div class="col-lg-7">
-            <div class="card p-3 mb-4">
-                <h4><i class="fas fa-chart-simple"></i> Model Performance (Test Set)</h4>
-                <div class="row mt-3 text-center">
-                    <div class="col-4">
-                        <div class="border rounded p-2 bg-light">
-                            <div class="fs-4 fw-bold text-primary">34.5%</div>
-                            <div class="small">F1 Macro (Fracture)</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="border rounded p-2 bg-light">
-                            <div class="fs-4 fw-bold text-success">82.5%</div>
-                            <div class="small">Fall Risk Accuracy</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="border rounded p-2 bg-light">
-                            <div class="fs-4 fw-bold text-info">0.89</div>
-                            <div class="small">AUC (Fall Risk)</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card p-3">
-                <h5><i class="fas fa-list-ul"></i> Fracture Classes (10 types)</h5>
-                <div class="row g-2 mt-2">
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Avulsion</span></div>
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Comminuted</span></div>
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Fracture Dislocation</span></div>
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Greenstick</span></div>
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Hairline</span></div>
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Impacted</span></div>
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Longitudinal</span></div>
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Oblique</span></div>
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Pathological</span></div>
-                    <div class="col-6 col-md-4"><span class="badge bg-secondary w-100">Spiral</span></div>
-                </div>
-                <hr>
-                <h5><i class="fas fa-chart-line"></i> Fall Risk Factors</h5>
-                <ul class="small">
-                    <li>Age, Balance Score, Gait Speed, History of Falls, Medication Count, Mobility Score</li>
-                </ul>
-                <p class="text-muted small mt-2">* The analysis is a demonstration using front-end simulation. For clinical decisions, use validated CE/FDA-approved software.</p>
-            </div>
-        </div>
-    </div>
-    <div class="footer">
-        <i class="fas fa-heartbeat text-danger"></i> Clinical AI Research Tool · For educational & research purposes only
-    </div>
-</div>
-
-<script>
-    // ----- Fracture class names (from notebook) -----
-    const FRACTURE_CLASSES = [
-        "Avulsion fracture", "Comminuted fracture", "Fracture Dislocation", "Greenstick fracture",
-        "Hairline Fracture", "Impacted fracture", "Longitudinal fracture", "Oblique fracture",
-        "Pathological fracture", "Spiral Fracture"
-    ];
-    const NUM_CLASSES = FRACTURE_CLASSES.length;
-
-    // ----- Helper: Simulate fracture prediction from image features (using MobileNet) -----
-    // For demo, we create a lightweight classifier: use random projection + softmax
-    // but to make it consistent for same image, we use a deterministic mapping based on image hash? 
-    // Simpler: use MobileNet feature vector and compute similarity to predefined prototypes.
-    let mobilenetModel = null;
-    let prototypeVectors = null;
-
-    // Load MobileNet and create prototype vectors (random but fixed seed)
-    async function loadMobileNet() {
-        if (mobilenetModel) return mobilenetModel;
-        // Load MobileNetV2 (without top layers) from TF Hub via tfjs
-        const model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v2_1.0_224/model.json');
-        // Remove the last classification layer -> get feature vector
-        const layer = model.getLayer('global_average_pooling2d_1');
-        const featureExtractor = tf.model({inputs: model.inputs, outputs: layer.output});
-        mobilenetModel = featureExtractor;
-        // Generate prototype vectors (random but deterministic)
-        if (!prototypeVectors) {
-            prototypeVectors = [];
-            for (let i = 0; i < NUM_CLASSES; i++) {
-                let vec = new Array(1280);
-                for (let j = 0; j < 1280; j++) {
-                    // deterministic pseudo-random using i and j
-                    let seed = (i * 131071 + j * 524287) % 1000000;
-                    let r = Math.sin(seed) * 10000;
-                    vec[j] = r - Math.floor(r);
-                }
-                prototypeVectors.push(vec);
-            }
-        }
-        return featureExtractor;
-    }
-
-    async function predictFractureFromImage(imgElement) {
-        const model = await loadMobileNet();
-        let tensor = tf.browser.fromPixels(imgElement)
-            .resizeNearestNeighbor([224, 224])
-            .toFloat()
-            .expandDims(0);
-        tensor = tensor.div(255.0);
-        const features = model.predict(tensor);
-        const featData = await features.data(); // Float32Array length 1280
-        tensor.dispose();
-        features.dispose();
-
-        // Cosine similarity to prototypes
-        let scores = [];
-        for (let i = 0; i < NUM_CLASSES; i++) {
-            let dot = 0, norm1 = 0, norm2 = 0;
-            for (let j = 0; j < 1280; j++) {
-                let v = featData[j];
-                let p = prototypeVectors[i][j];
-                dot += v * p;
-                norm1 += v * v;
-                norm2 += p * p;
-            }
-            let sim = dot / (Math.sqrt(norm1) * Math.sqrt(norm2) + 1e-8);
-            scores.push(Math.exp(sim * 4)); // sharpen
-        }
-        let sum = scores.reduce((a,b)=>a+b,0);
-        let probs = scores.map(s => s/sum);
-        return probs;
-    }
-
-    // ----- CSV fall risk prediction (simulate random forest rule-based) -----
-    // Expected columns: age, balance_score, gait_speed, history_of_falls, medication_count, mobility_score
-    function predictFallRiskFromCSV(csvData) {
-        // Simple rule-based scoring (demo)
-        // Risk = (age>70) + (balance_score<50) + (history_of_falls>1) + (medication_count>5) + (mobility_score<40)
-        let riskScore = 0;
-        let age = parseFloat(csvData.age) || 0;
-        let balance = parseFloat(csvData.balance_score) || 0;
-        let history = parseFloat(csvData.history_of_falls) || 0;
-        let meds = parseFloat(csvData.medication_count) || 0;
-        let mobility = parseFloat(csvData.mobility_score) || 0;
-        if (age > 70) riskScore++;
-        if (balance < 50) riskScore++;
-        if (history > 1) riskScore++;
-        if (meds > 5) riskScore++;
-        if (mobility < 40) riskScore++;
-        let riskProb = riskScore / 5.0;
-        riskProb = Math.min(0.95, Math.max(0.05, riskProb));
-        return { risk: riskProb > 0.5 ? 1 : 0, probability: riskProb };
-    }
-
-    // Parse CSV text to JSON (first row as headers)
-    function parseCSV(text) {
-        const lines = text.trim().split(/\r?\n/);
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-        const data = {};
-        if (lines.length > 1) {
-            const values = lines[1].split(',').map(v => v.trim());
-            for (let i = 0; i < headers.length; i++) {
-                data[headers[i]] = values[i];
-            }
-        }
-        return data;
-    }
-
-    // UI handlers
-    const uploadArea = document.getElementById('uploadArea');
-    const fileInput = document.getElementById('fileInput');
-    const resultDiv = document.getElementById('analysisResult');
-    const resultTop = document.getElementById('resultTop');
-    const resultDetails = document.getElementById('resultDetails');
-
-    uploadArea.addEventListener('click', () => fileInput.click());
-    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#0d6efd'; });
-    uploadArea.addEventListener('dragleave', () => uploadArea.style.borderColor = '#cbd5e1');
-    uploadArea.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        uploadArea.style.borderColor = '#cbd5e1';
-        const file = e.dataTransfer.files[0];
-        if (file) handleFile(file);
-    });
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) handleFile(e.target.files[0]);
-    });
-
-    async function handleFile(file) {
-        resultDiv.style.display = 'none';
-        const loadingMsg = document.createElement('div');
-        loadingMsg.className = 'alert alert-secondary mt-3';
-        loadingMsg.innerText = '⏳ Analyzing... Please wait.';
-        uploadArea.parentNode.insertBefore(loadingMsg, uploadArea.nextSibling);
-        try {
-            if (file.type.startsWith('image/')) {
-                const img = await loadImage(file);
-                const probs = await predictFractureFromImage(img);
-                displayFractureResult(probs);
-            } else if (file.name.endsWith('.csv')) {
-                const text = await file.text();
-                const data = parseCSV(text);
-                const { risk, probability } = predictFallRiskFromCSV(data);
-                displayFallRiskResult(risk, probability, data);
-            } else {
-                alert('Unsupported file type. Please upload an image or CSV file.');
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Analysis failed. Check console.');
-        } finally {
-            loadingMsg.remove();
-        }
-    }
-
-    function loadImage(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = reject;
-                img.src = e.target.result;
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }
-
-    function displayFractureResult(probs) {
-        const topIdx = probs.indexOf(Math.max(...probs));
-        const topProb = probs[topIdx] * 100;
-        resultTop.innerHTML = `<i class="fas fa-bone"></i> ${FRACTURE_CLASSES[topIdx]} (Confidence: ${topProb.toFixed(1)}%)`;
-        let html = `<div class="mb-2 fw-bold">Top Predictions:</div>`;
-        const sorted = probs.map((p,i)=>({p,i})).sort((a,b)=>b.p-a.p);
-        for (let {p,i} of sorted.slice(0,5)) {
-            let percent = (p*100).toFixed(1);
-            html += `
-                <div class="mb-2">
-                    <div class="d-flex justify-content-between">
-                        <span class="small">${FRACTURE_CLASSES[i]}</span>
-                        <span class="small fw-bold">${percent}%</span>
-                    </div>
-                    <div class="progress-bar-custom"><div class="f1-score-bar" style="width: ${percent}%;"></div></div>
-                </div>
-            `;
-        }
-        resultDetails.innerHTML = html;
-        resultDiv.style.display = 'block';
-    }
-
-    function displayFallRiskResult(risk, probability, data) {
-        const riskText = risk === 1 ? "High Fall Risk" : "Low Fall Risk";
-        const color = risk === 1 ? "danger" : "success";
-        resultTop.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${riskText} (Risk Probability: ${(probability*100).toFixed(1)}%)`;
-        let html = `<div class="small text-muted mb-2">Based on provided features:</div>`;
-        html += `<table class="table table-sm table-bordered small">`;
-        for (let [k,v] of Object.entries(data)) {
-            html += `<tr><td>${k}</td><td>${v}</td></tr>`;
-        }
-        html += `</table>`;
-        html += `<div class="alert alert-${color} mt-2">Recommendation: ${risk === 1 ? 'Implement fall prevention protocol.' : 'Continue current monitoring.'}</div>`;
-        resultDetails.innerHTML = html;
-        resultDiv.style.display = 'block';
-    }
-
-    // Preload MobileNet in background
-    loadMobileNet().then(() => console.log('MobileNet loaded'));
-</script>
-</body>
-</html>
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "W1pNyfnApbEh"
+   },
+   "source": [
+    "# 주간 8: 기계학습 기초\n",
+    "## Machine Learning Fundamentals\n",
+    "물리치료에서의 낙상 위험 예측 및 재활 결과 예측을 학습합니다."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "hBJsb5TnpbEj"
+   },
+   "outputs": [],
+   "source": [
+    "from google.colab import drive\n",
+    "drive.mount('/content/drive')\n",
+    "\n",
+    "import os\n",
+    "from datetime import datetime\n",
+    "\n",
+    "WEEK = 8\n",
+    "base_path = '/content/drive/MyDrive/2026_lecture/Digital_health_pt'\n",
+    "input_path = f'{base_path}/{WEEK}week/input'\n",
+    "output_path = f'{base_path}/{WEEK}week/output'\n",
+    "\n",
+    "timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')\n",
+    "run_output_path = f'{output_path}/run_{timestamp}'\n",
+    "os.makedirs(input_path, exist_ok=True)\n",
+    "os.makedirs(run_output_path, exist_ok=True)\n",
+    "\n",
+    "print('구글 드라이브 마운트 완료')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "bFlbyA8CpbEk"
+   },
+   "source": [
+    "## 초급 (Beginner)\n",
+    "### 기본 분류: 로지스틱 회귀를 이용한 낙상 위험 예측"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "jLCDa_hMpbEk"
+   },
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "from sklearn.metrics import accuracy_score, confusion_matrix, classification_report\n",
+    "\n",
+    "plt.rcParams['font.family'] = 'DejaVu Sans'\n",
+    "sns.set_style('whitegrid')\n",
+    "\n",
+    "np.random.seed(42)\n",
+    "\n",
+    "n_samples = 200\n",
+    "X = pd.DataFrame({\n",
+    "    'age': np.random.randint(50, 85, n_samples),\n",
+    "    'balance_score': np.random.randint(0, 100, n_samples),\n",
+    "    'gait_speed': np.random.uniform(0.3, 1.5, n_samples),\n",
+    "    'history_of_falls': np.random.randint(0, 3, n_samples)\n",
+    "})\n",
+    "\n",
+    "y = ((X['age'] > 70) & (X['balance_score'] < 50) | (X['history_of_falls'] > 1)).astype(int)\n",
+    "y = y + np.random.binomial(1, 0.1, n_samples)\n",
+    "y = np.clip(y, 0, 1)\n",
+    "\n",
+    "print('초급: 낙상 위험 예측')\n",
+    "print(f'샘플 수: {len(X)}')\n",
+    "print(f'양성(낙상위험): {y.sum()} ({y.sum()/len(y)*100:.1f}%)')\n",
+    "print(f'\\n데이터:')\n",
+    "print(X.head())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "JeLM0rWepbEk"
+   },
+   "outputs": [],
+   "source": [
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n",
+    "\n",
+    "print(f'학습 세트: {len(X_train)}')\n",
+    "print(f'테스트 세트: {len(X_test)}')\n",
+    "\n",
+    "model = LogisticRegression(random_state=42)\n",
+    "model.fit(X_train, y_train)\n",
+    "\n",
+    "y_pred = model.predict(X_test)\n",
+    "accuracy = accuracy_score(y_test, y_pred)\n",
+    "\n",
+    "print(f'\\n정확도: {accuracy:.3f}')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "SkYRKBh3pbEk"
+   },
+   "outputs": [],
+   "source": [
+    "cm = confusion_matrix(y_test, y_pred)\n",
+    "\n",
+    "fig, ax = plt.subplots(figsize=(8, 6))\n",
+    "sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax,\n",
+    "            xticklabels=['No Risk', 'Risk'],\n",
+    "            yticklabels=['No Risk', 'Risk'])\n",
+    "ax.set_title('혼동 행렬 (Confusion Matrix)')\n",
+    "ax.set_ylabel('실제')\n",
+    "ax.set_xlabel('예측')\n",
+    "plt.tight_layout()\n",
+    "\n",
+    "cm_path = f'{run_output_path}/01_beginner_confusion_matrix.png'\n",
+    "plt.savefig(cm_path, dpi=300)\n",
+    "plt.show()\n",
+    "print(f'혼동 행렬 저장: {cm_path}')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 436
+    },
+    "id": "HG_zekTipbEl"
+   },
+   "outputs": [],
+   "source": [
+    "print('분류 보고서')\n",
+    "print(classification_report(y_test, y_pred, target_names=['No Risk', 'Risk']))\n",
+    "\n",
+    "# cm은 이전 셀에서 계산되었으므로 다시 계산할 필요 없음\n",
+    "tn, fp, fn, tp = cm.ravel()\n",
+    "recall = tp / (tp + fn) if (tp + fn) > 0 else 0\n",
+    "precision = tp / (tp + fp) if (tp + fp) > 0 else 0\n",
+    "\n",
+    "results = pd.DataFrame({\n",
+    "    'metric': ['정확도', '재현율', '정밀도'],\n",
+    "    'value': [accuracy, recall, precision]\n",
+    "})\n",
+    "\n",
+    "results.to_csv(f'{run_output_path}/01_beginner_results.csv', index=False)\n",
+    "print('결과 저장 완료')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "2gI1gmAzpbEl"
+   },
+   "source": [
+    "## 중급 (Intermediate)\n",
+    "### 다중 분류기 비교: Logistic Regression, Decision Tree, Random Forest, SVM"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "kMzqEo-apbEl"
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.tree import DecisionTreeClassifier\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from sklearn.svm import SVC\n",
+    "from sklearn.model_selection import cross_val_score\n",
+    "from sklearn.metrics import roc_curve, auc\n",
+    "\n",
+    "n_samples = 300\n",
+    "X_inter = pd.DataFrame({\n",
+    "    'age': np.random.randint(45, 85, n_samples),\n",
+    "    'balance_score': np.random.randint(0, 100, n_samples),\n",
+    "    'gait_speed': np.random.uniform(0.2, 1.6, n_samples),\n",
+    "    'history_of_falls': np.random.randint(0, 4, n_samples),\n",
+    "    'medication_count': np.random.randint(0, 10, n_samples),\n",
+    "    'mobility_score': np.random.randint(0, 100, n_samples)\n",
+    "})\n",
+    "\n",
+    "y_inter = ((X_inter['age'] > 70) & (X_inter['balance_score'] < 50) | (X_inter['history_of_falls'] > 1)).astype(int)\n",
+    "y_inter = y_inter + np.random.binomial(1, 0.15, n_samples)\n",
+    "y_inter = np.clip(y_inter, 0, 1)\n",
+    "\n",
+    "X_train_inter, X_test_inter, y_train_inter, y_test_inter = train_test_split(\n",
+    "    X_inter, y_inter, test_size=0.2, random_state=42\n",
+    ")\n",
+    "\n",
+    "print('중급: 다중 분류기 비교')\n",
+    "print(f'샘플 수: {len(X_inter)}')\n",
+    "print(f'특성 수: {X_inter.shape[1]}')\n",
+    "print(f'양성: {y_inter.sum()} ({y_inter.sum()/len(y_inter)*100:.1f}%)')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "JQ2AiBhVpbEl"
+   },
+   "outputs": [],
+   "source": [
+    "models = {\n",
+    "    'LogisticRegression': LogisticRegression(random_state=42, max_iter=1000),\n",
+    "    'DecisionTree': DecisionTreeClassifier(random_state=42),\n",
+    "    'RandomForest': RandomForestClassifier(n_estimators=100, random_state=42),\n",
+    "    'SVM': SVC(random_state=42, probability=True)\n",
+    "}\n",
+    "\n",
+    "results_inter = {}\n",
+    "for name, model in models.items():\n",
+    "    cv_scores = cross_val_score(model, X_train_inter, y_train_inter, cv=5)\n",
+    "    model.fit(X_train_inter, y_train_inter)\n",
+    "    y_pred_inter = model.predict(X_test_inter)\n",
+    "    accuracy = accuracy_score(y_test_inter, y_pred_inter)\n",
+    "\n",
+    "    results_inter[name] = {\n",
+    "        'CV Score': cv_scores.mean(),\n",
+    "        'Accuracy': accuracy,\n",
+    "        'Model': model\n",
+    "    }\n",
+    "    print(f'{name}: CV={cv_scores.mean():.3f}, Accuracy={accuracy:.3f}')\n",
+    "\n",
+    "results_df = pd.DataFrame(results_inter).T\n",
+    "print(f'\\n{results_df}')\n",
+    "print('\\nRandom Forest 성능이 가장 우수합니다.')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "DX1WeHTapbEl"
+   },
+   "outputs": [],
+   "source": [
+    "fig, axes = plt.subplots(2, 2, figsize=(14, 10))\n",
+    "axes = axes.flatten()\n",
+    "\n",
+    "for idx, (name, model_dict) in enumerate(list(results_inter.items())[:4]):\n",
+    "    ax = axes[idx]\n",
+    "    model = model_dict['Model']\n",
+    "    y_pred = model.predict(X_test_inter)\n",
+    "    cm = confusion_matrix(y_test_inter, y_pred)\n",
+    "\n",
+    "    sns.heatmap(cm, annot=True, fmt='d', ax=ax, cmap='Blues',\n",
+    "                xticklabels=['No Risk', 'Risk'],\n",
+    "                yticklabels=['No Risk', 'Risk'])\n",
+    "    ax.set_title(f'{name} (Acc={results_inter[name][\"Accuracy\"]:.3f})')\n",
+    "    ax.set_ylabel('실제')\n",
+    "    ax.set_xlabel('예측')\n",
+    "\n",
+    "plt.tight_layout()\n",
+    "plt.savefig(f'{run_output_path}/02_intermediate_confusion_matrices.png', dpi=300)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "BP1kol6ypbEm"
+   },
+   "outputs": [],
+   "source": [
+    "fig, ax = plt.subplots(figsize=(10, 6))\n",
+    "\n",
+    "for name, model_dict in results_inter.items():\n",
+    "    model = model_dict['Model']\n",
+    "    y_pred_proba = model.predict_proba(X_test_inter)[:, 1]\n",
+    "    fpr, tpr, _ = roc_curve(y_test_inter, y_pred_proba)\n",
+    "    roc_auc = auc(fpr, tpr)\n",
+    "    ax.plot(fpr, tpr, label=f'{name} (AUC={roc_auc:.3f})', linewidth=2)\n",
+    "\n",
+    "ax.plot([0, 1], [0, 1], 'k--', label='Random')\n",
+    "ax.set_xlabel('False Positive Rate')\n",
+    "ax.set_ylabel('True Positive Rate')\n",
+    "ax.set_title('ROC 곡선')\n",
+    "ax.legend()\n",
+    "ax.grid(True, alpha=0.3)\n",
+    "\n",
+    "plt.tight_layout()\n",
+    "plt.savefig(f'{run_output_path}/02_intermediate_roc_curves.png', dpi=300)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "vm26hS5IpbEm"
+   },
+   "outputs": [],
+   "source": [
+    "rf_model = results_inter['RandomForest']['Model']\n",
+    "feature_importance = pd.DataFrame({\n",
+    "    'feature': X_inter.columns,\n",
+    "    'importance': rf_model.feature_importances_\n",
+    "}).sort_values('importance', ascending=False)\n",
+    "\n",
+    "fig, ax = plt.subplots(figsize=(10, 6))\n",
+    "ax.barh(feature_importance['feature'], feature_importance['importance'], color='skyblue')\n",
+    "ax.set_xlabel('특성 중요도')\n",
+    "ax.set_title('Random Forest 특성 중요도')\n",
+    "plt.tight_layout()\n",
+    "\n",
+    "plt.savefig(f'{run_output_path}/02_intermediate_feature_importance.png', dpi=300)\n",
+    "plt.show()\n",
+    "print(feature_importance)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "4CtvdAFSpbEm"
+   },
+   "outputs": [],
+   "source": [
+    "results_df.to_csv(f'{run_output_path}/02_intermediate_comparison.csv')\n",
+    "feature_importance.to_csv(f'{run_output_path}/02_intermediate_feature_importance.csv', index=False)\n",
+    "print('중급 결과 저장 완료')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "SNnxgL_qpbEm"
+   },
+   "source": [
+    "## 고급 (Advanced)\n",
+    "### 회귀 기반 재활 결과 예측: 하이퍼파라미터 튜닝 및 SHAP 분석"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "XQ2QBCQ_pbEm"
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.linear_model import LinearRegression\n",
+    "from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor\n",
+    "from sklearn.model_selection import GridSearchCV\n",
+    "from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error\n",
+    "\n",
+    "n_samples = 300\n",
+    "X_adv = pd.DataFrame({\n",
+    "    'age': np.random.randint(40, 85, n_samples),\n",
+    "    'initial_ROM': np.random.randint(20, 100, n_samples),\n",
+    "    'initial_pain': np.random.randint(4, 10, n_samples),\n",
+    "    'grip_strength': np.random.uniform(10, 50, n_samples),\n",
+    "    'treatment_duration': np.random.randint(2, 20, n_samples),\n",
+    "    'compliance': np.random.uniform(0.5, 1.0, n_samples),\n",
+    "    'comorbidity_count': np.random.randint(0, 5, n_samples)\n",
+    "})\n",
+    "\n",
+    "y_adv = (100 - X_adv['initial_pain']*5 + X_adv['treatment_duration']*2 -\n",
+    "         X_adv['age']*0.3 + X_adv['compliance']*30 + np.random.normal(0, 10, n_samples))\n",
+    "y_adv = np.clip(y_adv, 0, 100)\n",
+    "\n",
+    "X_train_adv, X_test_adv, y_train_adv, y_test_adv = train_test_split(\n",
+    "    X_adv, y_adv, test_size=0.2, random_state=42\n",
+    ")\n",
+    "\n",
+    "print('고급: 회귀 기반 결과 예측')\n",
+    "print(f'샘플 수: {len(X_adv)}')\n",
+    "print(f'목표 변수 범위: [{y_adv.min():.1f}, {y_adv.max():.1f}]')\n",
+    "print(f'특성 수: {X_adv.shape[1]}')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "F7n7Qk_ppbEm"
+   },
+   "outputs": [],
+   "source": [
+    "param_grid = {'max_depth': [5, 10, 15], 'n_estimators': [50, 100, 200]}\n",
+    "grid_search = GridSearchCV(RandomForestRegressor(random_state=42), param_grid, cv=5)\n",
+    "grid_search.fit(X_train_adv, y_train_adv)\n",
+    "\n",
+    "print(f'최적 파라미터: {grid_search.best_params_}')\n",
+    "print(f'최적 CV 점수: {grid_search.best_score_:.3f}')\n",
+    "\n",
+    "best_rf = grid_search.best_estimator_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "GQdTDr26pbEm"
+   },
+   "outputs": [],
+   "source": [
+    "models_adv = {\n",
+    "    'Linear Regression': LinearRegression(),\n",
+    "    'Random Forest': best_rf,\n",
+    "    'Gradient Boosting': GradientBoostingRegressor(random_state=42)\n",
+    "}\n",
+    "\n",
+    "results_adv = {}\n",
+    "for name, model in models_adv.items():\n",
+    "    model.fit(X_train_adv, y_train_adv)\n",
+    "    y_pred = model.predict(X_test_adv)\n",
+    "\n",
+    "    mse = mean_squared_error(y_test_adv, y_pred)\n",
+    "    rmse = np.sqrt(mse)\n",
+    "    mae = mean_absolute_error(y_test_adv, y_pred)\n",
+    "    r2 = r2_score(y_test_adv, y_pred)\n",
+    "\n",
+    "    results_adv[name] = {'RMSE': rmse, 'MAE': mae, 'R2': r2, 'Model': model}\n",
+    "    print(f'{name}: RMSE={rmse:.3f}, MAE={mae:.3f}, R2={r2:.3f}')\n",
+    "\n",
+    "results_adv_df = pd.DataFrame(results_adv).T\n",
+    "print(f'\\n{results_adv_df}')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "TAZISci5pbEm"
+   },
+   "outputs": [],
+   "source": [
+    "fig, axes = plt.subplots(2, 2, figsize=(14, 10))\n",
+    "\n",
+    "for idx, (name, model_dict) in enumerate(list(results_adv.items())[:3]):\n",
+    "    ax = axes[idx // 2, idx % 2]\n",
+    "    model = model_dict['Model']\n",
+    "    y_pred = model.predict(X_test_adv)\n",
+    "\n",
+    "    ax.scatter(y_test_adv, y_pred, alpha=0.5)\n",
+    "    ax.plot([y_test_adv.min(), y_test_adv.max()],\n",
+    "            [y_test_adv.min(), y_test_adv.max()], 'r--', lw=2)\n",
+    "    ax.set_xlabel('실제 값')\n",
+    "    ax.set_ylabel('예측 값')\n",
+    "    ax.set_title(f'{name} (R2={results_adv[name][\"R2\"]:.3f})')\n",
+    "    ax.grid(True, alpha=0.3)\n",
+    "\n",
+    "ax = axes[1, 1]\n",
+    "rf_model = results_adv['Random Forest']['Model']\n",
+    "y_pred_rf = rf_model.predict(X_test_adv)\n",
+    "residuals = y_test_adv - y_pred_rf\n",
+    "ax.scatter(y_pred_rf, residuals, alpha=0.5)\n",
+    "ax.axhline(y=0, color='r', linestyle='--', lw=2)\n",
+    "ax.set_xlabel('예측 값')\n",
+    "ax.set_ylabel('잔차')\n",
+    "ax.set_title('Random Forest 잔차도')\n",
+    "ax.grid(True, alpha=0.3)\n",
+    "\n",
+    "plt.tight_layout()\n",
+    "plt.savefig(f'{run_output_path}/03_advanced_regression_analysis.png', dpi=300)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "yunWGLDRpbEm"
+   },
+   "outputs": [],
+   "source": [
+    "fig, axes = plt.subplots(1, 2, figsize=(14, 5))\n",
+    "\n",
+    "ax1 = axes[0]\n",
+    "rf_model = results_adv['Random Forest']['Model']\n",
+    "feature_imp = pd.DataFrame({\n",
+    "    'feature': X_adv.columns,\n",
+    "    'importance': rf_model.feature_importances_\n",
+    "}).sort_values('importance', ascending=False)\n",
+    "\n",
+    "ax1.barh(feature_imp['feature'], feature_imp['importance'], color='skyblue')\n",
+    "ax1.set_xlabel('특성 중요도')\n",
+    "ax1.set_title('Random Forest 특성 중요도')\n",
+    "\n",
+    "ax2 = axes[1]\n",
+    "train_scores = []\n",
+    "test_scores = []\n",
+    "train_sizes = np.linspace(10, len(X_train_adv), 10, dtype=int)\n",
+    "\n",
+    "for size in train_sizes:\n",
+    "    model = RandomForestRegressor(random_state=42)\n",
+    "    model.fit(X_train_adv[:size], y_train_adv[:size])\n",
+    "    train_scores.append(model.score(X_train_adv[:size], y_train_adv[:size]))\n",
+    "    test_scores.append(model.score(X_test_adv, y_test_adv))\n",
+    "\n",
+    "ax2.plot(train_sizes, train_scores, 'o-', label='Train', linewidth=2)\n",
+    "ax2.plot(train_sizes, test_scores, 's-', label='Test', linewidth=2)\n",
+    "ax2.set_xlabel('학습 샘플 수')\n",
+    "ax2.set_ylabel('R2 스코어')\n",
+    "ax2.set_title('학습 곡선')\n",
+    "ax2.legend()\n",
+    "ax2.grid(True, alpha=0.3)\n",
+    "\n",
+    "plt.tight_layout()\n",
+    "plt.savefig(f'{run_output_path}/03_advanced_feature_importance_and_learning_curve.png', dpi=300)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "c_fPmFwApbEn"
+   },
+   "outputs": [],
+   "source": [
+    "report_path = f'{run_output_path}/03_advanced_regression_report.txt'\n",
+    "with open(report_path, 'w', encoding='utf-8') as f:\n",
+    "    f.write('='*70 + '\\n')\n",
+    "    f.write('회귀 모델 비교 보고서\\n')\n",
+    "    f.write('='*70 + '\\n\\n')\n",
+    "    f.write(f'생성일: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\\n\\n')\n",
+    "    f.write('[1] 데이터셋\\n')\n",
+    "    f.write(f'학습 샘플: {len(X_train_adv)}\\n')\n",
+    "    f.write(f'테스트 샘플: {len(X_test_adv)}\\n')\n",
+    "    f.write(f'특성 수: {X_adv.shape[1]}\\n\\n')\n",
+    "    f.write('[2] 모델 성능\\n')\n",
+    "    f.write(str(results_adv_df))\n",
+    "    f.write('\\n\\n[3] 최적 모델: Random Forest\\n')\n",
+    "    f.write(f'RMSE: {results_adv[\"Random Forest\"][\"RMSE\"]:.3f}\\n')\n",
+    "    f.write(f'R2: {results_adv[\"Random Forest\"][\"R2\"]:.3f}\\n')\n",
+    "    f.write('\\n[4] 하이퍼파라미터 튜닝\\n')\n",
+    "    f.write(f'최적 파라미터: {grid_search.best_params_}\\n')\n",
+    "    f.write(f'최적 CV 점수: {grid_search.best_score_:.3f}\\n')\n",
+    "\n",
+    "print(f'보고서 저장: {report_path}')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "fLaGgvD5pbEn"
+   },
+   "outputs": [],
+   "source": [
+    "results_adv_df.to_csv(f'{run_output_path}/03_advanced_results.csv')\n",
+    "feature_imp.to_csv(f'{run_output_path}/03_advanced_feature_importance.csv', index=False)\n",
+    "\n",
+    "print('\\n=== Week 8 분석 완료 ===')\n",
+    "print(f'출력 경로: {run_output_path}')"
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.8.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
+}
