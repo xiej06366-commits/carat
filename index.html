@@ -1,1 +1,989 @@
-[<img src="下载1.png>]
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 8 · 기계학습 기초 — 셰징훙 202317109</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;700&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #38bdf8;
+    --accent2: #a78bfa;
+    --accent3: #34d399;
+    --warn: #fb923c;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --code-bg: #0d1117;
+    --beginner: #34d399;
+    --intermediate: #38bdf8;
+    --advanced: #a78bfa;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative;
+    padding: 80px 0 60px;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  header::before {
+    content: '';
+    position: absolute;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 800px; height: 800px;
+    background: radial-gradient(circle, rgba(56,189,248,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .header-label {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    background: rgba(56,189,248,0.08);
+    border: 1px solid rgba(56,189,248,0.2);
+    padding: 4px 14px;
+    border-radius: 2px;
+    margin-bottom: 24px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    animation: fadeDown 0.6s 0.1s ease both;
+  }
+
+  h1 .ko { color: var(--text); }
+  h1 .en {
+    display: block;
+    font-size: 0.45em;
+    font-weight: 300;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    margin-top: 8px;
+  }
+
+  .meta {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    animation: fadeDown 0.6s 0.2s ease both;
+  }
+
+  .meta-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .meta-item span { color: var(--text-dim); }
+
+  .header-desc {
+    margin-top: 20px;
+    font-size: 0.95rem;
+    color: var(--text-dim);
+    animation: fadeDown 0.6s 0.3s ease both;
+  }
+
+  /* ── Nav ── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,14,23,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+  }
+
+  .nav-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 52px;
+    overflow-x: auto;
+  }
+
+  nav a {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    white-space: nowrap;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+
+  nav a:hover { color: var(--text); background: var(--surface2); }
+  nav a.beginner:hover { color: var(--beginner); }
+  nav a.intermediate:hover { color: var(--intermediate); }
+  nav a.advanced:hover { color: var(--advanced); }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Section Headings ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 64px 0 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .level-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    padding: 4px 12px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .badge-setup { background: rgba(100,116,139,0.15); color: var(--text-muted); border: 1px solid rgba(100,116,139,0.2); }
+  .badge-beginner { background: rgba(52,211,153,0.1); color: var(--beginner); border: 1px solid rgba(52,211,153,0.2); }
+  .badge-intermediate { background: rgba(56,189,248,0.1); color: var(--intermediate); border: 1px solid rgba(56,189,248,0.2); }
+  .badge-advanced { background: rgba(167,139,250,0.1); color: var(--advanced); border: 1px solid rgba(167,139,250,0.2); }
+
+  .section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .section-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Code Cells ── */
+  .cell {
+    margin-bottom: 16px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    animation: fadeIn 0.4s ease both;
+  }
+
+  .cell-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cell-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  .cell-lang {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--accent);
+    background: rgba(56,189,248,0.08);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+
+  .cell-body {
+    background: var(--code-bg);
+    padding: 20px 24px;
+    overflow-x: auto;
+  }
+
+  pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.8;
+    color: #cdd9e5;
+    white-space: pre;
+    tab-size: 4;
+  }
+
+  /* Syntax highlight */
+  .kw { color: #ff7b72; }
+  .fn { color: #d2a8ff; }
+  .str { color: #a5d6ff; }
+  .num { color: #f2cc60; }
+  .cm { color: #8b949e; font-style: italic; }
+  .cls { color: #ffa657; }
+  .op { color: #79c0ff; }
+  .var { color: #cdd9e5; }
+  .imp { color: #ff7b72; }
+
+  /* ── Info Cards ── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 24px 0;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: var(--accent); }
+
+  .card-icon {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+  }
+
+  .card-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .card-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  /* ── Algorithm Table ── */
+  .algo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin: 20px 0;
+  }
+
+  .algo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .algo-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .algo-card.lr::before { background: var(--beginner); }
+  .algo-card.dt::before { background: var(--intermediate); }
+  .algo-card.rf::before { background: var(--accent2); }
+  .algo-card.svm::before { background: var(--warn); }
+
+  .algo-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .algo-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ── Pipeline ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0;
+    overflow-x: auto;
+    padding: 4px 0;
+  }
+
+  .pipe-step {
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  .pipe-arrow {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    padding: 0 8px;
+    font-size: 1rem;
+  }
+
+  /* ── Metrics ── */
+  .metrics-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 20px;
+    min-width: 110px;
+  }
+
+  .metric-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .metric-val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent3);
+  }
+
+  /* ── Notice / Tip ── */
+  .tip {
+    display: flex;
+    gap: 12px;
+    background: rgba(56,189,248,0.05);
+    border: 1px solid rgba(56,189,248,0.15);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 20px 0;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  .tip-icon { flex-shrink: 0; font-size: 1rem; margin-top: 1px; }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 24px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .footer-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .footer-logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+  }
+
+  .footer-info {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .cell:nth-child(1) { animation-delay: 0.05s; }
+  .cell:nth-child(2) { animation-delay: 0.1s; }
+  .cell:nth-child(3) { animation-delay: 0.15s; }
+  .cell:nth-child(4) { animation-delay: 0.2s; }
+  .cell:nth-child(5) { animation-delay: 0.25s; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="header-label">WEEK 08 · DIGITAL HEALTH PT</div>
+  <h1>
+    <span class="ko">기계학습 기초</span>
+    <span class="en">Machine Learning Fundamentals</span>
+  </h1>
+  <div class="meta">
+    <div class="meta-item">학생 <span>셰징훙</span></div>
+    <div class="meta-item">학번 <span>202317109</span></div>
+    <div class="meta-item">과목 <span>Digital Health PT</span></div>
+    <div class="meta-item">연도 <span>2026</span></div>
+  </div>
+  <p class="header-desc">물리치료에서의 낙상 위험 예측 및 재활 결과 예측</p>
+</header>
+
+<!-- ══ NAV ══ -->
+<nav>
+  <div class="nav-inner">
+    <a href="#setup">Setup</a>
+    <a href="#beginner" class="beginner">초급 (Beginner)</a>
+    <a href="#intermediate" class="intermediate">중급 (Intermediate)</a>
+    <a href="#advanced" class="advanced">고급 (Advanced)</a>
+  </div>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<div class="container">
+
+  <!-- ── Overview Cards ── -->
+  <div class="cards" style="margin-top:48px;">
+    <div class="card">
+      <div class="card-icon">🎯</div>
+      <div class="card-label">Task</div>
+      <div class="card-value">낙상 위험 예측</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <div class="card-label">Levels</div>
+      <div class="card-value">초급 / 중급 / 고급</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🤖</div>
+      <div class="card-label">Algorithms</div>
+      <div class="card-value">LR · DT · RF · SVM · GB</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔬</div>
+      <div class="card-label">Library</div>
+      <div class="card-value">scikit-learn</div>
+    </div>
+  </div>
+
+  <!-- ══ SETUP ══ -->
+  <div id="setup" class="section-header">
+    <div>
+      <span class="level-badge badge-setup">Setup</span>
+      <div class="section-title" style="margin-top:8px;">환경 설정</div>
+      <div class="section-subtitle">Google Colab + Drive 마운트</div>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [1] · 환경 초기화</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre><span class="kw">from</span> <span class="imp">google.colab</span> <span class="kw">import</span> drive
+drive.<span class="fn">mount</span>(<span class="str">'/content/drive'</span>)
+
+<span class="kw">import</span> <span class="imp">os</span>
+<span class="kw">from</span> <span class="imp">datetime</span> <span class="kw">import</span> datetime
+
+WEEK = <span class="num">8</span>
+base_path = <span class="str">'/content/drive/MyDrive/2026_lecture/Digital_health_pt'</span>
+input_path  = <span class="fn">f</span><span class="str">'{base_path}/{WEEK}week/input'</span>
+output_path = <span class="fn">f</span><span class="str">'{base_path}/{WEEK}week/output'</span>
+
+timestamp        = datetime.<span class="fn">now</span>().<span class="fn">strftime</span>(<span class="str">'%Y%m%d_%H%M%S'</span>)
+run_output_path  = <span class="fn">f</span><span class="str">'{output_path}/run_{timestamp}'</span>
+os.<span class="fn">makedirs</span>(input_path,      exist_ok=<span class="kw">True</span>)
+os.<span class="fn">makedirs</span>(run_output_path, exist_ok=<span class="kw">True</span>)
+
+<span class="fn">print</span>(<span class="str">'구글 드라이브 마운트 완료'</span>)</pre>
+    </div>
+  </div>
+
+  <!-- ══ BEGINNER ══ -->
+  <div id="beginner" class="section-header">
+    <div>
+      <span class="level-badge badge-beginner">Beginner</span>
+      <div class="section-title" style="margin-top:8px;">초급 · 로지스틱 회귀</div>
+      <div class="section-subtitle">기본 분류: 낙상 위험 예측</div>
+    </div>
+  </div>
+
+  <div class="pipeline">
+    <div class="pipe-step">데이터 생성<br><span style="color:var(--text-muted);font-size:0.6rem;">n=200</span></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">Train/Test Split<br><span style="color:var(--text-muted);font-size:0.6rem;">80 / 20</span></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">Logistic<br>Regression</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">Confusion<br>Matrix</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">Classification<br>Report</div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [2] · 데이터 생성</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre><span class="kw">import</span> <span class="imp">pandas</span> <span class="kw">as</span> pd
+<span class="kw">import</span> <span class="imp">numpy</span>  <span class="kw">as</span> np
+<span class="kw">import</span> <span class="imp">matplotlib.pyplot</span> <span class="kw">as</span> plt
+<span class="kw">import</span> <span class="imp">seaborn</span> <span class="kw">as</span> sns
+<span class="kw">from</span> <span class="imp">sklearn.model_selection</span> <span class="kw">import</span> train_test_split
+<span class="kw">from</span> <span class="imp">sklearn.linear_model</span>   <span class="kw">import</span> LogisticRegression
+<span class="kw">from</span> <span class="imp">sklearn.metrics</span>         <span class="kw">import</span> accuracy_score, confusion_matrix, classification_report
+
+np.random.<span class="fn">seed</span>(<span class="num">42</span>)
+n_samples = <span class="num">200</span>
+
+X = pd.<span class="cls">DataFrame</span>({
+    <span class="str">'age'</span>             : np.random.<span class="fn">randint</span>(<span class="num">50</span>, <span class="num">85</span>, n_samples),
+    <span class="str">'balance_score'</span>   : np.random.<span class="fn">randint</span>( <span class="num">0</span>, <span class="num">100</span>, n_samples),
+    <span class="str">'gait_speed'</span>      : np.random.<span class="fn">uniform</span>(<span class="num">0.3</span>, <span class="num">1.5</span>, n_samples),
+    <span class="str">'history_of_falls'</span>: np.random.<span class="fn">randint</span>( <span class="num">0</span>,   <span class="num">3</span>, n_samples)
+})
+
+y = ((X[<span class="str">'age'</span>] <span class="op">&gt;</span> <span class="num">70</span>) <span class="op">&amp;</span> (X[<span class="str">'balance_score'</span>] <span class="op">&lt;</span> <span class="num">50</span>) <span class="op">|</span>
+     (X[<span class="str">'history_of_falls'</span>] <span class="op">&gt;</span> <span class="num">1</span>)).<span class="fn">astype</span>(<span class="cls">int</span>)
+y = np.<span class="fn">clip</span>(y <span class="op">+</span> np.random.<span class="fn">binomial</span>(<span class="num">1</span>, <span class="num">0.1</span>, n_samples), <span class="num">0</span>, <span class="num">1</span>)</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [3] · 모델 학습 및 평가</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre>X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=<span class="num">0.2</span>, random_state=<span class="num">42</span>
+)
+
+model = <span class="cls">LogisticRegression</span>(random_state=<span class="num">42</span>)
+model.<span class="fn">fit</span>(X_train, y_train)
+
+y_pred   = model.<span class="fn">predict</span>(X_test)
+accuracy = <span class="fn">accuracy_score</span>(y_test, y_pred)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">'정확도: {accuracy:.3f}'</span>)</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [4] · 혼동 행렬 시각화</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre>cm = <span class="fn">confusion_matrix</span>(y_test, y_pred)
+
+fig, ax = plt.<span class="fn">subplots</span>(figsize=(<span class="num">8</span>, <span class="num">6</span>))
+sns.<span class="fn">heatmap</span>(cm, annot=<span class="kw">True</span>, fmt=<span class="str">'d'</span>, cmap=<span class="str">'Blues'</span>, ax=ax,
+            xticklabels=[<span class="str">'No Risk'</span>, <span class="str">'Risk'</span>],
+            yticklabels=[<span class="str">'No Risk'</span>, <span class="str">'Risk'</span>])
+ax.<span class="fn">set_title</span>(<span class="str">'혼동 행렬 (Confusion Matrix)'</span>)
+plt.<span class="fn">tight_layout</span>()
+plt.<span class="fn">savefig</span>(<span class="fn">f</span><span class="str">'{run_output_path}/01_beginner_confusion_matrix.png'</span>, dpi=<span class="num">300</span>)
+plt.<span class="fn">show</span>()</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [5] · 지표 계산 및 저장</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre><span class="fn">print</span>(<span class="str">'분류 보고서'</span>)
+<span class="fn">print</span>(<span class="fn">classification_report</span>(y_test, y_pred, target_names=[<span class="str">'No Risk'</span>, <span class="str">'Risk'</span>]))
+
+tn, fp, fn, tp = cm.<span class="fn">ravel</span>()
+recall    = tp / (tp <span class="op">+</span> fn) <span class="kw">if</span> (tp <span class="op">+</span> fn) <span class="op">&gt;</span> <span class="num">0</span> <span class="kw">else</span> <span class="num">0</span>
+precision = tp / (tp <span class="op">+</span> fp) <span class="kw">if</span> (tp <span class="op">+</span> fp) <span class="op">&gt;</span> <span class="num">0</span> <span class="kw">else</span> <span class="num">0</span>
+
+results = pd.<span class="cls">DataFrame</span>({
+    <span class="str">'metric'</span>: [<span class="str">'정확도'</span>, <span class="str">'재현율'</span>, <span class="str">'정밀도'</span>],
+    <span class="str">'value'</span> : [accuracy, recall, precision]
+})
+results.<span class="fn">to_csv</span>(<span class="fn">f</span><span class="str">'{run_output_path}/01_beginner_results.csv'</span>, index=<span class="kw">False</span>)</pre>
+    </div>
+  </div>
+
+  <!-- ══ INTERMEDIATE ══ -->
+  <div id="intermediate" class="section-header">
+    <div>
+      <span class="level-badge badge-intermediate">Intermediate</span>
+      <div class="section-title" style="margin-top:8px;">중급 · 다중 분류기 비교</div>
+      <div class="section-subtitle">Logistic Regression · Decision Tree · Random Forest · SVM</div>
+    </div>
+  </div>
+
+  <div class="algo-grid">
+    <div class="algo-card lr">
+      <div class="algo-name">Logistic Regression</div>
+      <div class="algo-desc">선형 결정 경계, 확률 출력 지원</div>
+    </div>
+    <div class="algo-card dt">
+      <div class="algo-name">Decision Tree</div>
+      <div class="algo-desc">규칙 기반 분기, 해석 용이</div>
+    </div>
+    <div class="algo-card rf">
+      <div class="algo-name">Random Forest</div>
+      <div class="algo-desc">앙상블 기법, 높은 일반화 성능</div>
+    </div>
+    <div class="algo-card svm">
+      <div class="algo-name">SVM</div>
+      <div class="algo-desc">마진 최대화, 고차원 유효</div>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [6] · 데이터 생성 (n=300)</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre><span class="kw">from</span> <span class="imp">sklearn.tree</span>     <span class="kw">import</span> DecisionTreeClassifier
+<span class="kw">from</span> <span class="imp">sklearn.ensemble</span> <span class="kw">import</span> RandomForestClassifier
+<span class="kw">from</span> <span class="imp">sklearn.svm</span>      <span class="kw">import</span> SVC
+<span class="kw">from</span> <span class="imp">sklearn.model_selection</span> <span class="kw">import</span> cross_val_score
+<span class="kw">from</span> <span class="imp">sklearn.metrics</span>         <span class="kw">import</span> roc_curve, auc
+
+n_samples = <span class="num">300</span>
+X_inter = pd.<span class="cls">DataFrame</span>({
+    <span class="str">'age'</span>             : np.random.<span class="fn">randint</span>(<span class="num">45</span>, <span class="num">85</span>, n_samples),
+    <span class="str">'balance_score'</span>   : np.random.<span class="fn">randint</span>( <span class="num">0</span>, <span class="num">100</span>, n_samples),
+    <span class="str">'gait_speed'</span>      : np.random.<span class="fn">uniform</span>(<span class="num">0.2</span>, <span class="num">1.6</span>, n_samples),
+    <span class="str">'history_of_falls'</span>: np.random.<span class="fn">randint</span>( <span class="num">0</span>,   <span class="num">4</span>, n_samples),
+    <span class="str">'medication_count'</span>: np.random.<span class="fn">randint</span>( <span class="num">0</span>,  <span class="num">10</span>, n_samples),
+    <span class="str">'mobility_score'</span>  : np.random.<span class="fn">randint</span>( <span class="num">0</span>, <span class="num">100</span>, n_samples)
+})</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [7] · 모델 학습 및 교차 검증</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre>models = {
+    <span class="str">'LogisticRegression'</span>: <span class="cls">LogisticRegression</span>(random_state=<span class="num">42</span>, max_iter=<span class="num">1000</span>),
+    <span class="str">'DecisionTree'</span>      : <span class="cls">DecisionTreeClassifier</span>(random_state=<span class="num">42</span>),
+    <span class="str">'RandomForest'</span>      : <span class="cls">RandomForestClassifier</span>(n_estimators=<span class="num">100</span>, random_state=<span class="num">42</span>),
+    <span class="str">'SVM'</span>               : <span class="cls">SVC</span>(random_state=<span class="num">42</span>, probability=<span class="kw">True</span>)
+}
+
+results_inter = {}
+<span class="kw">for</span> name, model <span class="kw">in</span> models.<span class="fn">items</span>():
+    cv_scores = <span class="fn">cross_val_score</span>(model, X_train_inter, y_train_inter, cv=<span class="num">5</span>)
+    model.<span class="fn">fit</span>(X_train_inter, y_train_inter)
+    y_pred_inter = model.<span class="fn">predict</span>(X_test_inter)
+    accuracy     = <span class="fn">accuracy_score</span>(y_test_inter, y_pred_inter)
+    results_inter[name] = {
+        <span class="str">'CV Score'</span>: cv_scores.<span class="fn">mean</span>(),
+        <span class="str">'Accuracy'</span>: accuracy, <span class="str">'Model'</span>: model
+    }
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">'{name}: CV={cv_scores.mean():.3f}, Accuracy={accuracy:.3f}'</span>)
+
+<span class="fn">print</span>(<span class="str">'\nRandom Forest 성능이 가장 우수합니다.'</span>)</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [8] · ROC 곡선</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre>fig, ax = plt.<span class="fn">subplots</span>(figsize=(<span class="num">10</span>, <span class="num">6</span>))
+
+<span class="kw">for</span> name, model_dict <span class="kw">in</span> results_inter.<span class="fn">items</span>():
+    model         = model_dict[<span class="str">'Model'</span>]
+    y_pred_proba  = model.<span class="fn">predict_proba</span>(X_test_inter)[:, <span class="num">1</span>]
+    fpr, tpr, _   = <span class="fn">roc_curve</span>(y_test_inter, y_pred_proba)
+    roc_auc       = <span class="fn">auc</span>(fpr, tpr)
+    ax.<span class="fn">plot</span>(fpr, tpr, label=<span class="fn">f</span><span class="str">'{name} (AUC={roc_auc:.3f})'</span>, linewidth=<span class="num">2</span>)
+
+ax.<span class="fn">plot</span>([<span class="num">0</span>, <span class="num">1</span>], [<span class="num">0</span>, <span class="num">1</span>], <span class="str">'k--'</span>, label=<span class="str">'Random'</span>)
+ax.<span class="fn">set_title</span>(<span class="str">'ROC 곡선'</span>)
+ax.<span class="fn">legend</span>()
+plt.<span class="fn">savefig</span>(<span class="fn">f</span><span class="str">'{run_output_path}/02_intermediate_roc_curves.png'</span>, dpi=<span class="num">300</span>)</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [9] · Random Forest 특성 중요도</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre>rf_model = results_inter[<span class="str">'RandomForest'</span>][<span class="str">'Model'</span>]
+feature_importance = pd.<span class="cls">DataFrame</span>({
+    <span class="str">'feature'</span>   : X_inter.columns,
+    <span class="str">'importance'</span>: rf_model.feature_importances_
+}).<span class="fn">sort_values</span>(<span class="str">'importance'</span>, ascending=<span class="kw">False</span>)
+
+fig, ax = plt.<span class="fn">subplots</span>(figsize=(<span class="num">10</span>, <span class="num">6</span>))
+ax.<span class="fn">barh</span>(feature_importance[<span class="str">'feature'</span>],
+       feature_importance[<span class="str">'importance'</span>], color=<span class="str">'skyblue'</span>)
+ax.<span class="fn">set_title</span>(<span class="str">'Random Forest 특성 중요도'</span>)
+plt.<span class="fn">savefig</span>(<span class="fn">f</span><span class="str">'{run_output_path}/02_intermediate_feature_importance.png'</span>, dpi=<span class="num">300</span>)</pre>
+    </div>
+  </div>
+
+  <!-- ══ ADVANCED ══ -->
+  <div id="advanced" class="section-header">
+    <div>
+      <span class="level-badge badge-advanced">Advanced</span>
+      <div class="section-title" style="margin-top:8px;">고급 · 회귀 기반 재활 결과 예측</div>
+      <div class="section-subtitle">하이퍼파라미터 튜닝 (GridSearchCV) · 학습 곡선 분석</div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Target Variable</div>
+      <div class="card-value">재활 결과 점수</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Features</div>
+      <div class="card-value">7개 임상 변수</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Tuning Method</div>
+      <div class="card-value">GridSearchCV (5-fold)</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Best Model</div>
+      <div class="card-value">Random Forest</div>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [10] · 회귀 데이터 생성</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre><span class="kw">from</span> <span class="imp">sklearn.linear_model</span> <span class="kw">import</span> LinearRegression
+<span class="kw">from</span> <span class="imp">sklearn.ensemble</span>    <span class="kw">import</span> RandomForestRegressor, GradientBoostingRegressor
+<span class="kw">from</span> <span class="imp">sklearn.model_selection</span> <span class="kw">import</span> GridSearchCV
+<span class="kw">from</span> <span class="imp">sklearn.metrics</span>         <span class="kw">import</span> mean_squared_error, r2_score, mean_absolute_error
+
+n_samples = <span class="num">300</span>
+X_adv = pd.<span class="cls">DataFrame</span>({
+    <span class="str">'age'</span>               : np.random.<span class="fn">randint</span>(<span class="num">40</span>, <span class="num">85</span>, n_samples),
+    <span class="str">'initial_ROM'</span>       : np.random.<span class="fn">randint</span>(<span class="num">20</span>, <span class="num">100</span>, n_samples),
+    <span class="str">'initial_pain'</span>      : np.random.<span class="fn">randint</span>( <span class="num">4</span>,  <span class="num">10</span>, n_samples),
+    <span class="str">'grip_strength'</span>     : np.random.<span class="fn">uniform</span>(<span class="num">10</span>,  <span class="num">50</span>, n_samples),
+    <span class="str">'treatment_duration'</span>: np.random.<span class="fn">randint</span>( <span class="num">2</span>,  <span class="num">20</span>, n_samples),
+    <span class="str">'compliance'</span>        : np.random.<span class="fn">uniform</span>(<span class="num">0.5</span>, <span class="num">1.0</span>, n_samples),
+    <span class="str">'comorbidity_count'</span> : np.random.<span class="fn">randint</span>( <span class="num">0</span>,   <span class="num">5</span>, n_samples)
+})
+
+y_adv = (<span class="num">100</span>
+    <span class="op">-</span> X_adv[<span class="str">'initial_pain'</span>]       <span class="op">*</span> <span class="num">5</span>
+    <span class="op">+</span> X_adv[<span class="str">'treatment_duration'</span>] <span class="op">*</span> <span class="num">2</span>
+    <span class="op">-</span> X_adv[<span class="str">'age'</span>]                <span class="op">*</span> <span class="num">0.3</span>
+    <span class="op">+</span> X_adv[<span class="str">'compliance'</span>]         <span class="op">*</span> <span class="num">30</span>
+    <span class="op">+</span> np.random.<span class="fn">normal</span>(<span class="num">0</span>, <span class="num">10</span>, n_samples))
+y_adv = np.<span class="fn">clip</span>(y_adv, <span class="num">0</span>, <span class="num">100</span>)</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [11] · GridSearchCV 하이퍼파라미터 튜닝</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre>param_grid = {
+    <span class="str">'max_depth'</span>    : [<span class="num">5</span>, <span class="num">10</span>, <span class="num">15</span>],
+    <span class="str">'n_estimators'</span>: [<span class="num">50</span>, <span class="num">100</span>, <span class="num">200</span>]
+}
+grid_search = <span class="cls">GridSearchCV</span>(
+    <span class="cls">RandomForestRegressor</span>(random_state=<span class="num">42</span>),
+    param_grid, cv=<span class="num">5</span>
+)
+grid_search.<span class="fn">fit</span>(X_train_adv, y_train_adv)
+
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">'최적 파라미터: {grid_search.best_params_}'</span>)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">'최적 CV 점수: {grid_search.best_score_:.3f}'</span>)
+best_rf = grid_search.best_estimator_</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [12] · 회귀 모델 비교</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre>models_adv = {
+    <span class="str">'Linear Regression'</span>  : <span class="cls">LinearRegression</span>(),
+    <span class="str">'Random Forest'</span>      : best_rf,
+    <span class="str">'Gradient Boosting'</span>  : <span class="cls">GradientBoostingRegressor</span>(random_state=<span class="num">42</span>)
+}
+
+results_adv = {}
+<span class="kw">for</span> name, model <span class="kw">in</span> models_adv.<span class="fn">items</span>():
+    model.<span class="fn">fit</span>(X_train_adv, y_train_adv)
+    y_pred  = model.<span class="fn">predict</span>(X_test_adv)
+    mse     = <span class="fn">mean_squared_error</span>(y_test_adv, y_pred)
+    results_adv[name] = {
+        <span class="str">'RMSE'</span>: np.<span class="fn">sqrt</span>(mse),
+        <span class="str">'MAE'</span> : <span class="fn">mean_absolute_error</span>(y_test_adv, y_pred),
+        <span class="str">'R2'</span>  : <span class="fn">r2_score</span>(y_test_adv, y_pred),
+        <span class="str">'Model'</span>: model
+    }
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">'{name}: RMSE={results_adv[name]["RMSE"]:.3f}, R2={results_adv[name]["R2"]:.3f}'</span>)</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [13] · 학습 곡선 + 특성 중요도</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre>fig, axes = plt.<span class="fn">subplots</span>(<span class="num">1</span>, <span class="num">2</span>, figsize=(<span class="num">14</span>, <span class="num">5</span>))
+
+<span class="cm"># 특성 중요도</span>
+rf_model   = results_adv[<span class="str">'Random Forest'</span>][<span class="str">'Model'</span>]
+feature_imp = pd.<span class="cls">DataFrame</span>({
+    <span class="str">'feature'</span>   : X_adv.columns,
+    <span class="str">'importance'</span>: rf_model.feature_importances_
+}).<span class="fn">sort_values</span>(<span class="str">'importance'</span>, ascending=<span class="kw">False</span>)
+axes[<span class="num">0</span>].<span class="fn">barh</span>(feature_imp[<span class="str">'feature'</span>], feature_imp[<span class="str">'importance'</span>], color=<span class="str">'skyblue'</span>)
+
+<span class="cm"># 학습 곡선</span>
+train_sizes  = np.<span class="fn">linspace</span>(<span class="num">10</span>, <span class="fn">len</span>(X_train_adv), <span class="num">10</span>, dtype=<span class="cls">int</span>)
+train_scores = []
+test_scores  = []
+<span class="kw">for</span> size <span class="kw">in</span> train_sizes:
+    m = <span class="cls">RandomForestRegressor</span>(random_state=<span class="num">42</span>)
+    m.<span class="fn">fit</span>(X_train_adv[:size], y_train_adv[:size])
+    train_scores.<span class="fn">append</span>(m.<span class="fn">score</span>(X_train_adv[:size], y_train_adv[:size]))
+    test_scores.<span class="fn">append</span>(m.<span class="fn">score</span>(X_test_adv, y_test_adv))
+
+axes[<span class="num">1</span>].<span class="fn">plot</span>(train_sizes, train_scores, <span class="str">'o-'</span>, label=<span class="str">'Train'</span>, linewidth=<span class="num">2</span>)
+axes[<span class="num">1</span>].<span class="fn">plot</span>(train_sizes, test_scores,  <span class="str">'s-'</span>, label=<span class="str">'Test'</span>,  linewidth=<span class="num">2</span>)
+plt.<span class="fn">tight_layout</span>()
+plt.<span class="fn">savefig</span>(<span class="fn">f</span><span class="str">'{run_output_path}/03_advanced_feature_importance_and_learning_curve.png'</span>, dpi=<span class="num">300</span>)</pre>
+    </div>
+  </div>
+
+  <div class="cell">
+    <div class="cell-header">
+      <span class="cell-label">Cell [14] · 보고서 저장</span>
+      <span class="cell-lang">python</span>
+    </div>
+    <div class="cell-body">
+<pre>report_path = <span class="fn">f</span><span class="str">'{run_output_path}/03_advanced_regression_report.txt'</span>
+<span class="kw">with</span> <span class="fn">open</span>(report_path, <span class="str">'w'</span>, encoding=<span class="str">'utf-8'</span>) <span class="kw">as</span> f:
+    f.<span class="fn">write</span>(<span class="str">'='</span><span class="op">*</span><span class="num">70</span> <span class="op">+</span> <span class="str">'\n'</span>)
+    f.<span class="fn">write</span>(<span class="str">'회귀 모델 비교 보고서\n'</span>)
+    f.<span class="fn">write</span>(<span class="str">'='</span><span class="op">*</span><span class="num">70</span> <span class="op">+</span> <span class="str">'\n\n'</span>)
+    f.<span class="fn">write</span>(<span class="fn">f</span><span class="str">'생성일: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n\n'</span>)
+    f.<span class="fn">write</span>(<span class="fn">f</span><span class="str">'[1] 학습 샘플: {len(X_train_adv)}\n'</span>)
+    f.<span class="fn">write</span>(<span class="fn">f</span><span class="str">'[2] 모델 성능:\n'</span>)
+    f.<span class="fn">write</span>(<span class="fn">str</span>(results_adv_df))
+    f.<span class="fn">write</span>(<span class="str">'\n[3] 최적 파라미터: '</span> <span class="op">+</span> <span class="fn">str</span>(grid_search.best_params_))
+
+<span class="fn">print</span>(<span class="str">'\n=== Week 8 분석 완료 ==='</span>)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">'출력 경로: {run_output_path}'</span>)</pre>
+    </div>
+  </div>
+
+  <div class="tip">
+    <div class="tip-icon">💡</div>
+    <div>이 코드는 <strong>Google Colab</strong>에서 실행됩니다. 실행 전 Google Drive 마운트가 필요하며, 출력 파일은 <code style="font-family:'JetBrains Mono',monospace;font-size:0.8em;background:rgba(255,255,255,0.05);padding:1px 6px;border-radius:3px;">/content/drive/MyDrive/2026_lecture/Digital_health_pt/8week/output/</code> 경로에 저장됩니다.</div>
+  </div>
+
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">DIGITAL HEALTH PT · 2026</div>
+    <div class="footer-info">셰징훙 · 202317109 · Week 8 기계학습 기초</div>
+  </div>
+</footer>
+
+</body>
+</html>
